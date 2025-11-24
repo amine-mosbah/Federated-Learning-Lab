@@ -1,0 +1,32 @@
+INFO:     Started server process [21447]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+Starting Client 1 on port 8001
+INFO:     127.0.0.1:51656 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51660 - "GET /health HTTP/1.1" 200 OK
+CUDA available: False
+CUDA not available. Training on CPU...
+Epoch 20/100, w=0.6188, b=0.3767
+Epoch 40/100, w=1.1280, b=0.6828
+Epoch 60/100, w=1.5470, b=0.9315
+Epoch 80/100, w=1.8918, b=1.1337
+Epoch 100/100, w=2.1756, b=1.2979
+Client 1 training complete: w=2.1756, b=1.2979, loss=2.2196
+Target values: w=3.5, b=2.0
+INFO:     127.0.0.1:51660 - "POST /train HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51688 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51692 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54884 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Finished server process [21447]
+ERROR:    Traceback (most recent call last):
+  File "/home/hama/Desktop/TP_Hamza/TP_Federated/venv/lib/python3.9/site-packages/starlette/routing.py", line 686, in lifespan
+    await receive()
+  File "/home/hama/Desktop/TP_Hamza/TP_Federated/venv/lib/python3.9/site-packages/uvicorn/lifespan/on.py", line 137, in receive
+    return await self.receive_queue.get()
+  File "/home/hama/.pyenv/versions/3.9.23/lib/python3.9/asyncio/queues.py", line 166, in get
+    await getter
+asyncio.exceptions.CancelledError
+

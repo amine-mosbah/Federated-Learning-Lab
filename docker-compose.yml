@@ -1,0 +1,88 @@
+version: "3.8"
+
+services:
+  # Client 1 - FL Client with GPU support
+  client1:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: fl_client1
+    environment:
+      - CLIENT_ID=1
+      - PORT=8001
+    ports:
+      - "8001:8001"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - fl_network
+    restart: unless-stopped
+
+  # Client 2 - FL Client with GPU support
+  client2:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: fl_client2
+    environment:
+      - CLIENT_ID=2
+      - PORT=8002
+    ports:
+      - "8002:8002"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - fl_network
+    restart: unless-stopped
+
+  # Client 3 - FL Client with GPU support
+  client3:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: fl_client3
+    environment:
+      - CLIENT_ID=3
+      - PORT=8003
+    ports:
+      - "8003:8003"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - fl_network
+    restart: unless-stopped
+
+  # Aggregator - FL Aggregator Service (no GPU needed)
+  aggregator:
+    build:
+      context: .
+      dockerfile: Dockerfile.aggregator
+    container_name: fl_aggregator
+    ports:
+      - "9000:9000"
+    networks:
+      - fl_network
+    restart: unless-stopped
+    depends_on:
+      - client1
+      - client2
+      - client3
+
+networks:
+  fl_network:
+    driver: bridge
