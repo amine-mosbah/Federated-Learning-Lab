@@ -1,0 +1,30 @@
+# Dockerfile for FL Client Service with CUDA support
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Set working directory
+WORKDIR /app
+
+# Install Python and dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python packages
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy client application
+COPY client.py .
+
+# Environment variables (will be overridden by docker-compose)
+ENV CLIENT_ID=1
+ENV PORT=8001
+
+# Expose port
+EXPOSE 8001
+
+# Run the application
+CMD ["python3", "client.py"]

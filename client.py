@@ -109,7 +109,11 @@ def train_local_model():
         cuda_available = False
     
     # Generate synthetic data (each client gets different seed)
-    seed = int(CLIENT_ID) * 42
+    # Use hash of CLIENT_ID to support both numeric and string IDs
+    try:
+        seed = int(CLIENT_ID) * 42
+    except ValueError:
+        seed = abs(hash(CLIENT_ID)) % (2**31)  # Convert string to seed
     x, y = generate_synthetic_data(DATA_SIZE, seed=seed)
     
     # Initialize model parameters
@@ -242,7 +246,91 @@ async def root():
     }
 
 
+# Distributed Mode Configuration
+MODE = os.getenv("MODE", "STANDALONE")  # STANDALONE or DISTRIBUTED
+AGGREGATOR_URL = os.getenv("AGGREGATOR_URL", "http://localhost:9000")
+POLL_INTERVAL = 5  # seconds
+
+import httpx
+import time
+import asyncio
+
+async def run_distributed_mode():
+    """
+    Run client in distributed mode:
+    1. Poll aggregator for status
+    2. If new round available, train local model
+    3. Submit update to aggregator
+    """
+    print(f"Starting Client {CLIENT_ID} in DISTRIBUTED mode")
+    print(f"Target Aggregator: {AGGREGATOR_URL}")
+    
+    last_trained_round = 0
+    
+    async with httpx.AsyncClient() as client:
+        # 1. Register
+        try:
+            await client.post(f"{AGGREGATOR_URL}/join/{CLIENT_ID}")
+            print(f"✓ Registered with aggregator")
+        except Exception as e:
+            print(f"⚠ Could not register (will retry): {e}")
+
+        # 2. Main Loop
+        while True:
+            try:
+                # Check status
+                resp = await client.get(f"{AGGREGATOR_URL}/status")
+                if resp.status_code != 200:
+                    print(f"⚠ Aggregator returned {resp.status_code}")
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+                
+                status = resp.json()
+                current_round = status["round"]
+                round_status = status["status"]
+                
+                if current_round > last_trained_round and round_status == "waiting":
+                    print(f"\n→ New Round {current_round} detected! Starting training...")
+                    
+                    # Train
+                    result = train_local_model()
+                    
+                    # Submit
+                    update = {
+                        "client_id": CLIENT_ID,
+                        "w": result["w"],
+                        "b": result["b"],
+                        "loss": result["loss"]
+                    }
+                    
+                    submit_resp = await client.post(f"{AGGREGATOR_URL}/submit", json=update)
+                    if submit_resp.status_code == 200:
+                        print(f"✓ Update submitted for Round {current_round}")
+                        last_trained_round = current_round
+                    else:
+                        print(f"✗ Submission failed: {submit_resp.text}")
+                
+                elif round_status == "completed":
+                    if last_trained_round == current_round:
+                        print(f"Waiting for next round... (Current: {current_round} Completed)")
+                    
+                else:
+                    # Waiting for others or already trained
+                    pass
+                    
+            except Exception as e:
+                print(f"⚠ Connection error: {e}")
+            
+            await asyncio.sleep(POLL_INTERVAL)
+
 if __name__ == "__main__":
     import uvicorn
-    print(f"Starting Client {CLIENT_ID} on port {PORT}")
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    
+    if MODE == "DISTRIBUTED":
+        try:
+            asyncio.run(run_distributed_mode())
+        except KeyboardInterrupt:
+            print("Client stopped by user")
+    else:
+        print(f"Starting Client {CLIENT_ID} on port {PORT} (Standalone Mode)")
+        uvicorn.run(app, host="0.0.0.0", port=PORT)
